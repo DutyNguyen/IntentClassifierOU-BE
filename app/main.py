@@ -8,9 +8,9 @@ from pathlib import Path
 import joblib
 import numpy as np
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -46,6 +46,8 @@ ALLOWED_HOSTS = _split_csv_env(
 _pipeline = None
 _labels = None
 
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
 
 def _load_model() -> None:
     global _pipeline, _labels
@@ -77,7 +79,6 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc",
 )
 
 app.add_middleware(
@@ -92,61 +93,6 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
     allow_credentials=False,
 )
-
-
-@app.get("/", response_class=HTMLResponse)
-def root():
-        return """
-        <!doctype html>
-        <html lang="vi">
-            <head>
-                <meta charset="utf-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <title>OU Intent Inference Engine</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        margin: 0;
-                        min-height: 100vh;
-                        display: grid;
-                        place-items: center;
-                        background: #0f172a;
-                        color: #e2e8f0;
-                    }
-                    .card {
-                        max-width: 720px;
-                        padding: 32px;
-                        border-radius: 20px;
-                        background: rgba(15, 23, 42, 0.9);
-                        border: 1px solid rgba(148, 163, 184, 0.2);
-                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-                    }
-                    h1 { margin-top: 0; }
-                    a { color: #38bdf8; }
-                    code {
-                        display: inline-block;
-                        margin-top: 8px;
-                        padding: 6px 10px;
-                        border-radius: 8px;
-                        background: rgba(148, 163, 184, 0.15);
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <h1>OU Intent Inference Engine</h1>
-                    <p>Backend is running successfully on Render.</p>
-                    <p>Open the Swagger UI:</p>
-                    <code><a href="/docs" style="color:#38bdf8;text-decoration:none;">/docs</a></code>
-                    <p>Health check:</p>
-                    <code>/api/health</code>
-                    <p>Predict endpoint:</p>
-                    <code>/api/predict</code>
-                    <p>Use the frontend app or call the API endpoints directly.</p>
-                </div>
-            </body>
-        </html>
-        """
 
 
 class PredictRequest(BaseModel):
@@ -169,43 +115,17 @@ def _preprocess(text: str) -> str:
         return text.lower().strip()
 
 
-def _check_api_key(x_api_key: str | None) -> None:
+def _verify_api_key(x_api_key: str | None = Security(api_key_header)) -> str | None:
+    """Verify API key from header. Swagger will show Authorize button."""
     if not API_KEY:
-        return
+        return None  # No key required if not configured
     if not x_api_key or not secrets.compare_digest(x_api_key, API_KEY):
         raise HTTPException(status_code=401, detail="Unauthorized")
-
-
-@app.get("/api/health")
-def health():
-    ready = _pipeline is not None
-    return {
-        "status": "ok" if ready else "error",
-        "intents": len(_labels) if _labels else 0,
-        "env": APP_ENV,
-    }
-
-
-@app.get("/api/predict")
-def predict_info():
-    return {
-        "message": "Use POST /api/predict with JSON body {\"text\": \"...\"}",
-        "example": {
-            "method": "POST",
-            "url": "/api/predict",
-            "headers": {"Content-Type": "application/json"},
-            "body": {"text": "Điểm chuẩn ngành CNTT bao nhiêu?"},
-        },
-        "security": {
-            "api_key_header": "X-API-Key",
-            "required": bool(API_KEY),
-        },
-    }
+    return x_api_key
 
 
 @app.post("/api/predict", response_model=PredictResponse)
-def predict(req: PredictRequest, x_api_key: str | None = Header(default=None)):
-    _check_api_key(x_api_key)
+def predict(req: PredictRequest, _: str | None = Security(_verify_api_key)):
 
     if _pipeline is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
