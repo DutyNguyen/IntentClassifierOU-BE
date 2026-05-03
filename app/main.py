@@ -66,6 +66,7 @@ def _load_model() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _load_model()
+    assert _labels is not None
     print(f"[Backend] Model loaded - {len(_labels)} intents.")
     yield
 
@@ -75,8 +76,8 @@ app = FastAPI(
     description="Intent classification API",
     version="2.0.0",
     lifespan=lifespan,
-    docs_url=None if APP_ENV == "production" else "/docs",
-    redoc_url=None if APP_ENV == "production" else "/redoc",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 app.add_middleware(
@@ -135,11 +136,12 @@ def root():
                 <div class="card">
                     <h1>OU Intent Inference Engine</h1>
                     <p>Backend is running successfully on Render.</p>
+                    <p>Open the Swagger UI:</p>
+                    <code><a href="/docs" style="color:#38bdf8;text-decoration:none;">/docs</a></code>
                     <p>Health check:</p>
                     <code>/api/health</code>
                     <p>Predict endpoint:</p>
                     <code>/api/predict</code>
-                    <p>API docs are disabled in production for security.</p>
                     <p>Use the frontend app or call the API endpoints directly.</p>
                 </div>
             </body>
@@ -181,6 +183,23 @@ def health():
         "status": "ok" if ready else "error",
         "intents": len(_labels) if _labels else 0,
         "env": APP_ENV,
+    }
+
+
+@app.get("/api/predict")
+def predict_info():
+    return {
+        "message": "Use POST /api/predict with JSON body {\"text\": \"...\"}",
+        "example": {
+            "method": "POST",
+            "url": "/api/predict",
+            "headers": {"Content-Type": "application/json"},
+            "body": {"text": "Điểm chuẩn ngành CNTT bao nhiêu?"},
+        },
+        "security": {
+            "api_key_header": "X-API-Key",
+            "required": bool(API_KEY),
+        },
     }
 
 
