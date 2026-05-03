@@ -1,0 +1,12 @@
+{
+  "model": "MultinomialNB",
+  "cv_f1_macro_mean": 0.9076121157820856,
+  "cv_f1_macro_std": 0.02148226418211084,
+  "accuracy": 0.9269643475250952,
+  "precision_macro": 0.9329128926585936,
+  "recall_macro": 0.9023926135102914,
+  "f1_macro": 0.9088386114662471,
+  "n_samples": 2889,
+  "n_classes": 21,
+  "cv_folds": 5
+}
