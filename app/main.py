@@ -10,6 +10,7 @@ import numpy as np
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -90,6 +91,60 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-API-Key"],
     allow_credentials=False,
 )
+
+
+@app.get("/", response_class=HTMLResponse)
+def root():
+        return """
+        <!doctype html>
+        <html lang="vi">
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <title>OU Intent Inference Engine</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        min-height: 100vh;
+                        display: grid;
+                        place-items: center;
+                        background: #0f172a;
+                        color: #e2e8f0;
+                    }
+                    .card {
+                        max-width: 720px;
+                        padding: 32px;
+                        border-radius: 20px;
+                        background: rgba(15, 23, 42, 0.9);
+                        border: 1px solid rgba(148, 163, 184, 0.2);
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+                    }
+                    h1 { margin-top: 0; }
+                    a { color: #38bdf8; }
+                    code {
+                        display: inline-block;
+                        margin-top: 8px;
+                        padding: 6px 10px;
+                        border-radius: 8px;
+                        background: rgba(148, 163, 184, 0.15);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>OU Intent Inference Engine</h1>
+                    <p>Backend is running successfully on Render.</p>
+                    <p>Health check:</p>
+                    <code>/api/health</code>
+                    <p>Predict endpoint:</p>
+                    <code>/api/predict</code>
+                    <p>API docs are disabled in production for security.</p>
+                    <p>Use the frontend app or call the API endpoints directly.</p>
+                </div>
+            </body>
+        </html>
+        """
 
 
 class PredictRequest(BaseModel):
