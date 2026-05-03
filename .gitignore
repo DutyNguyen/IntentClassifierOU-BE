@@ -22,3 +22,4 @@ Thumbs.db
 # Model artifacts
 models/*.pkl
 models/*.joblib
+!models/intent_classifier.pkl
